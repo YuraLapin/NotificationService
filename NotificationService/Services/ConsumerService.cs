@@ -1,4 +1,5 @@
 ﻿using Confluent.Kafka;
+using NotificationService.Hubs;
 
 namespace NotificationService.Services
 {
@@ -6,10 +7,12 @@ namespace NotificationService.Services
     {
         private readonly IConsumer<Ignore, string> _consumer;
         private readonly ILogger<ConsumerService> _logger;
+        private readonly NotificaionHub _websocketHub;
 
-        public ConsumerService(IConfiguration configuration, ILogger<ConsumerService> logger)
+        public ConsumerService(IConfiguration configuration, ILogger<ConsumerService> logger, NotificaionHub websocketHub)
         {
             _logger = logger;
+            _websocketHub = websocketHub;
 
             var consumerConfig = new ConsumerConfig
             {
@@ -27,20 +30,21 @@ namespace NotificationService.Services
 
             while (!ct.IsCancellationRequested)
             {
-                ProcessKafkaMessage(ct);
+                await ProcessKafkaMessage(ct);
                 Task.Delay(TimeSpan.FromMinutes(1), ct);
             }
 
             _consumer.Close();
         }
 
-        public void ProcessKafkaMessage(CancellationToken ct)
+        public async Task ProcessKafkaMessage(CancellationToken ct)
         {
             try
             {
                 var consumed = _consumer.Consume(ct);
                 var message = consumed.Message.Value;
                 _logger.LogCritical($"\n\n\nReceived: { message }\n\n\n");
+                await _websocketHub.SendMessage(message);
             }
             catch (Exception ex)
             {
