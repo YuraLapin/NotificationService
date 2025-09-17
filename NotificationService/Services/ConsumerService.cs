@@ -3,6 +3,9 @@ using NotificationService.Hubs;
 
 namespace NotificationService.Services
 {
+    // <summary>
+    // Сервис, работающий в фоне и читающий сообщения из Kafka
+    // </summary>
     public class ConsumerService : BackgroundService
     {
         private readonly IConsumer<Ignore, string> _consumer;
@@ -24,6 +27,13 @@ namespace NotificationService.Services
             _consumer = new ConsumerBuilder<Ignore, string>(consumerConfig).Build();
         }
 
+        // <summary>
+        // Запускает цикл чтения и отправки в websocket сообщения из Kafka,
+        // цикл прерывается через cancellationToken
+        // </summary>
+        // <param name="ct">
+        // Токен отмены
+        // </param>
         protected override async Task ExecuteAsync(CancellationToken ct)
         {
             _consumer.Subscribe("notification-topic");
@@ -37,18 +47,25 @@ namespace NotificationService.Services
             _consumer.Close();
         }
 
+        // <summary>
+        // Обрабатывает полученное из Kafka сообщение - 
+        // Отправляет его содержимое в websocket
+        // </summary>
+        // <param name="ct">
+        // Токен отмены
+        // </param>
         public async Task ProcessKafkaMessage(CancellationToken ct)
         {
             try
             {
                 var consumed = _consumer.Consume(ct);
                 var message = consumed.Message.Value;
-                _logger.LogCritical($"\n\n\nReceived: { message }\n\n\n");
+                _logger.LogCritical($"Получено сообщение: { message }");
                 await _websocketHub.SendMessage(message);
             }
             catch (Exception ex)
             {
-                _logger.LogCritical($"Error processing Kafka message: { ex.Message }");
+                _logger.LogCritical($"Ошибка при получении сообщения: { ex.Message }");
             }
         }
     }
