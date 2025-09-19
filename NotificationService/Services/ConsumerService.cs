@@ -1,4 +1,4 @@
-﻿using Confluent.Kafka;
+using Confluent.Kafka;
 using NotificationService.Hubs;
 
 namespace NotificationService.Services
