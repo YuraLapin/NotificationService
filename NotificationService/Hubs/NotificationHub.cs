@@ -5,7 +5,7 @@ namespace NotificationService.Hubs
     // <summary>
     // SignalR хаб для websocket соединения
     // </summary>
-    public class NotificaionHub: Hub
+    public class NotificationHub: Hub<INotificator>
     {
         // <summary>
         // Отправляет в websocket сообщение
@@ -13,9 +13,9 @@ namespace NotificationService.Hubs
         // <param name="message">
         // Сообщение для отправки
         // </param>
-        public async Task SendMessage(string message)
+        public async Task Notify(string message)
         {
-            await Clients.All.SendAsync("SendMessage", message);
+            await Clients.All.Notify(message);
         }
     }
 }

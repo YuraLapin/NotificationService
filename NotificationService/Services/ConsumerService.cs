@@ -1,5 +1,6 @@
-using Confluent.Kafka;
+﻿using Confluent.Kafka;
 using NotificationService.Hubs;
+using Microsoft.AspNetCore.SignalR;
 
 namespace NotificationService.Services
 {
@@ -8,14 +9,14 @@ namespace NotificationService.Services
     // </summary>
     public class ConsumerService : BackgroundService
     {
-        private readonly IConsumer<Ignore, string> _consumer;
         private readonly ILogger<ConsumerService> _logger;
-        private readonly NotificaionHub _websocketHub;
+        private readonly IConsumer<Ignore, string> _consumer;
+        private readonly IHubContext<NotificationHub, INotificator> _hubContext;
 
-        public ConsumerService(IConfiguration configuration, ILogger<ConsumerService> logger, NotificaionHub websocketHub)
+        public ConsumerService(IConfiguration configuration, ILogger<ConsumerService> logger, IHubContext<NotificationHub, INotificator> hubContext)
         {
             _logger = logger;
-            _websocketHub = websocketHub;
+            _hubContext = hubContext;
 
             var consumerConfig = new ConsumerConfig
             {
@@ -41,7 +42,7 @@ namespace NotificationService.Services
             while (!ct.IsCancellationRequested)
             {
                 await ProcessKafkaMessage(ct);
-                Task.Delay(TimeSpan.FromMinutes(1), ct);
+                await Task.Delay(1000, ct);
             }
 
             _consumer.Close();
@@ -61,7 +62,7 @@ namespace NotificationService.Services
                 var consumed = _consumer.Consume(ct);
                 var message = consumed.Message.Value;
                 _logger.LogCritical($"Получено сообщение: { message }");
-                await _websocketHub.SendMessage(message);
+                await _hubContext.Clients.All.Notify(message);
             }
             catch (Exception ex)
             {
