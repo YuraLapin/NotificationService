@@ -4,9 +4,9 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace NotificationService.Services
 {
-    // <summary>
-    // Сервис, работающий в фоне и читающий сообщения из Kafka
-    // </summary>
+    /// <summary>
+    /// Сервис, работающий в фоне и читающий сообщения из Kafka
+    /// </summary>
     public class ConsumerService : BackgroundService
     {
         private readonly ILogger<ConsumerService> _logger;
@@ -28,13 +28,13 @@ namespace NotificationService.Services
             _consumer = new ConsumerBuilder<Ignore, string>(consumerConfig).Build();
         }
 
-        // <summary>
-        // Запускает цикл чтения и отправки в websocket сообщения из Kafka,
-        // цикл прерывается через cancellationToken
-        // </summary>
-        // <param name="ct">
-        // Токен отмены
-        // </param>
+        /// <summary>
+        /// Запускает цикл чтения и отправки в websocket сообщения из Kafka,
+        /// цикл прерывается через cancellationToken
+        /// </summary>
+        /// <param name="ct">
+        /// Токен отмены
+        /// </param>
         protected override async Task ExecuteAsync(CancellationToken ct)
         {
             _consumer.Subscribe("notification-topic");
@@ -48,13 +48,13 @@ namespace NotificationService.Services
             _consumer.Close();
         }
 
-        // <summary>
-        // Обрабатывает полученное из Kafka сообщение - 
-        // Отправляет его содержимое в websocket
-        // </summary>
-        // <param name="ct">
-        // Токен отмены
-        // </param>
+        /// <summary>
+        /// Обрабатывает полученное из Kafka сообщение - 
+        /// Отправляет его содержимое в websocket
+        /// </summary>
+        /// <param name="ct">
+        /// Токен отмены
+        /// </param>
         public async Task ProcessKafkaMessage(CancellationToken ct)
         {
             try
