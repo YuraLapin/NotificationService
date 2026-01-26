@@ -1,15 +1,22 @@
 ﻿using Confluent.Kafka;
+using NotificationService.Hubs;
+using Microsoft.AspNetCore.SignalR;
 
 namespace NotificationService.Services
 {
+    /// <summary>
+    /// Сервис, работающий в фоне и читающий сообщения из Kafka
+    /// </summary>
     public class ConsumerService : BackgroundService
     {
-        private readonly IConsumer<Ignore, string> _consumer;
         private readonly ILogger<ConsumerService> _logger;
+        private readonly IConsumer<Ignore, string> _consumer;
+        private readonly IHubContext<NotificationHub, INotificator> _hubContext;
 
-        public ConsumerService(IConfiguration configuration, ILogger<ConsumerService> logger)
+        public ConsumerService(IConfiguration configuration, ILogger<ConsumerService> logger, IHubContext<NotificationHub, INotificator> hubContext)
         {
             _logger = logger;
+            _hubContext = hubContext;
 
             var consumerConfig = new ConsumerConfig
             {
@@ -21,30 +28,45 @@ namespace NotificationService.Services
             _consumer = new ConsumerBuilder<Ignore, string>(consumerConfig).Build();
         }
 
+        /// <summary>
+        /// Запускает цикл чтения и отправки в websocket сообщения из Kafka,
+        /// цикл прерывается через cancellationToken
+        /// </summary>
+        /// <param name="ct">
+        /// Токен отмены
+        /// </param>
         protected override async Task ExecuteAsync(CancellationToken ct)
         {
             _consumer.Subscribe("notification-topic");
 
             while (!ct.IsCancellationRequested)
             {
-                ProcessKafkaMessage(ct);
-                Task.Delay(TimeSpan.FromMinutes(1), ct);
+                await ProcessKafkaMessage(ct);
+                await Task.Delay(1000, ct);
             }
 
             _consumer.Close();
         }
 
-        public void ProcessKafkaMessage(CancellationToken ct)
+        /// <summary>
+        /// Обрабатывает полученное из Kafka сообщение - 
+        /// Отправляет его содержимое в websocket
+        /// </summary>
+        /// <param name="ct">
+        /// Токен отмены
+        /// </param>
+        public async Task ProcessKafkaMessage(CancellationToken ct)
         {
             try
             {
                 var consumed = _consumer.Consume(ct);
                 var message = consumed.Message.Value;
-                _logger.LogCritical($"\n\n\nReceived: { message }\n\n\n");
+                _logger.LogCritical($"Получено сообщение: { message }");
+                await _hubContext.Clients.All.Notify(message);
             }
             catch (Exception ex)
             {
-                _logger.LogCritical($"Error processing Kafka message: { ex.Message }");
+                _logger.LogCritical($"Ошибка при получении сообщения: { ex.Message }");
             }
         }
     }
